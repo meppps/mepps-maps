@@ -1,0 +1,22 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -118.2746571,
+                    34.0433543
+                ]
+            },
+            "type": "Feature",
+            "properties": {
+                "category": "Example",
+                "name": "Store 1",
+                "phone": "4932949",
+                "address": "1234 Test Dr.",
+                "storeid": "01"
+            }
+        }
+    ]
+}
