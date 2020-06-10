@@ -6,7 +6,7 @@
 Plugin Name: Mepps Maps - Store Locator
 Plugin URI: http://github.com/meppps
 Description: Integrate Google Maps into your site with store locator functionality.
-Version: 1.0.0
+Version: 1.0.1
 Author: Mikey Epps
 Author URI: http://github.com/meppps
 License: GPLv2 or later
@@ -17,36 +17,22 @@ if(!defined('ABSPATH')){
     exit;
 }
 
-// Load scripts
-// require_once(plugin_dir_path(__FILE__).'/includes/mps-maps-scripts.php');
-
-// Load class
-// require_once(plugin_dir_path(__FILE__).'/includes/mepps-maps-class.php');
-
-
-
-// add_shortcode('mpsmaps','mps_store_locator');
-
-// add_action('admin_menu', 'mps_maps_admin_menu');
 
 
 // ===================================================== // 
 // ============ CLIENT SIDE LOCATOR ==================== // 
 // ===================================================== // 
 
-
 function mps_store_locator(){
 
     wp_enqueue_script('mps-main-script', plugins_url(). '/mepps-maps/js/main.js');
 
     $jsonPath = plugin_dir_path( __FILE__ ) . '/data.json';
-    $data = file_get_contents(plugin_dir_path( __FILE__ ) . '/data.json');
-    $json = json_encode($data);
+    $geoData = file_get_contents(plugin_dir_path( __FILE__ ) . '/data.json');
+    $geoJSON = json_encode($geoData);
     $apiKey = file_get_contents(plugin_dir_path( __FILE__ ) . '/data/key.txt');
-    // $indexJs = plugin_dir_path( __FILE__ ) . '/index.js';
-    // $tempJs =  plugin_dir_path( __FILE__ ) . '/temp.js';
-    
-  
+
+      
     
     ?>
     <style>
@@ -54,8 +40,7 @@ function mps_store_locator(){
        * element that contains the map. */
       #map {
             height: 70%;
-            /* width: 70%; */
-            /* width: 800px !important; */
+            height: 600px;
         }
 
 
@@ -74,6 +59,8 @@ function mps_store_locator(){
             font-family: 'Roboto', 'sans-serif';
             line-height: 30px;
             /* width: 70%; */
+            display: flex;
+            flex-flow: wrap;
         }
 
         .storeTable{
@@ -103,6 +90,16 @@ function mps_store_locator(){
             border-radius: 3px;
             border: 1.5px solid black;
             padding: auto;
+            height: fit-content;
+            font-size: 12px
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+
+        @media screen and (max-width: 600px){
+            #floating-panel{
+                flex-flow: column;
+            }
         }
 
     </style>
@@ -151,7 +148,7 @@ function mps_store_locator(){
     const categories = [];
     var markers = [];
 
-    var json = JSON.parse(<?php print($json) ?>);
+    var json = JSON.parse(<?php print($geoJSON) ?>);
 
     points.push(json);        
         points[0].features.forEach((feature)=>{
@@ -164,9 +161,6 @@ function mps_store_locator(){
         
 
 
-    </script>
-
-    <script>
     // Haversine formula to calculate distance
     var rad = function(x) {
         return x * Math.PI / 180;
@@ -202,11 +196,11 @@ function mps_store_locator(){
     };
     
 
-    // Initialize
     
-
+    
+    // Add all categories to filterby
     function initFilter(){
-        var select = document.querySelector('select.catFilter')
+        var select = document.querySelector('select.catFilter');
         var defaultFilter = document.createElement('option');
         defaultFilter.value = 'All';
         defaultFilter.text = 'All';
@@ -223,24 +217,26 @@ function mps_store_locator(){
 
     var map;
 
-    // Init
+
+    // Init map
     function initMap() {
 
         
     
         map = new google.maps.Map(document.getElementById('map'), {
-            center: {lat: -34.397, lng: 150.644},
-            zoom: 8
+            center: {lat: 36.2868882, lng: -117.75346},
+            zoom: 6
         });
 
         // Set to user location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function (position) {
-            initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-            map.setCenter(initialLocation);
-        });
+                initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                map.setCenter(initialLocation);
+            });
         }
 
+        // Show all markers 
         function showAll(markers){
             if(document.querySelector('.storeTbody')){
                     document.querySelector('.storeTbody').innerHTML = '';
@@ -254,6 +250,7 @@ function mps_store_locator(){
             })
         }       
         
+        // Init Table
         function createTable(){
             var table = document.createElement('table');
             table.classList.add('storeTable');
@@ -267,8 +264,9 @@ function mps_store_locator(){
         // Load data
         //   map.data.loadGeoJson('list.json');
        
-
+        // Loop through points , Create markers
         points[0].features.forEach((feature)=>{
+
             var latLng = {lat: feature.geometry.coordinates[1], lng: feature.geometry.coordinates[0]};
 
             var marker = new google.maps.Marker({
@@ -299,25 +297,27 @@ function mps_store_locator(){
                 infowindow.open(map, marker);
             });
 
-        })
+        });
 
         
+        // Bind geocode
         document.getElementById('submit').addEventListener('click', function() {
                 geocodeAddress(geocoder, map);
         });
     
     
     
-        // Geocode user location
         var geocoder = new google.maps.Geocoder();
         var shape;
     
-    
+        
+        // Geocode user location
         function geocodeAddress(geocoder, resultsMap) {
 
             var address = document.getElementById('address').value;
-    
+            
             geocoder.geocode({'address': address}, function(results, status) {
+
                 if (status === 'OK') {
 
                     resultsMap.setCenter(results[0].geometry.location);          
@@ -338,9 +338,10 @@ function mps_store_locator(){
                     });
       
 
-                    
+                    // Clear table
                     document.querySelector('.storeList').innerHTML = '';
-    
+                    
+                    // User lat/lng
                     var mylat = results[0].geometry.location.lat();
                     var mylng = results[0].geometry.location.lng(); 
                     var radius = document.getElementById('radiusSelect').value * 1609.34;
@@ -367,10 +368,10 @@ function mps_store_locator(){
                     // Loop through points, return all within radius
                     // TODO: Create reusable table function
                     createTable();
+                    
                     points[0].features.forEach((point)=>{
                         var storeCoords = point.geometry.coordinates;
                         if(getDistance(center,storeCoords) < radius){
-                            // console.log(document.querySelector('.storeTbody'))
                             if(filter){
                                 if(filterType() == point.properties.category){
                                     returnAdds.push(point.properties.address);
@@ -394,13 +395,11 @@ function mps_store_locator(){
 
                       document.querySelectorAll('tr.storeResult').forEach((res)=>{
 
-
+                          
                           res.addEventListener('click',()=>{
+
                               var address = res.childNodes[2].innerText;
-
                               var match = markers.filter(m => m.address == address)[0];
-                              
-
                               var contentString = `
                                 <strong>Store: </strong>${match.name}<br/>
                                 <strong>Address: </strong>${match.address}<br/>
@@ -416,27 +415,12 @@ function mps_store_locator(){
                           })
                       })
                      
-                    // TODO:  Hide features not in results
+                    //Hide features not in results
                     markers.forEach((marker)=>{
                         if(! returnAdds.includes(marker.address)){
                             marker.setVisible(false);
                         }
                     })
-
-             
-
-                    // map.data.setStyle(function(feature){
-                    //     var markerAdd = feature.j.address;
-                    //     // console.log(returnAdds);
-                    //     if(! returnAdds.includes(markerAdd)){
-                    //         feature.setStyle({visible:false})
-
-                    //     }else{
-                    //         console.log(feature.j.address);
-                    //     }
-
-                        
-                    // })
 
     
                 } else {
@@ -474,17 +458,10 @@ function mps_store_locator(){
 <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo($apiKey) ?>&callback=initMap"
     async defer></script>
 
-    <script>
-    var stuff = <?php print($json); ?>
-    </script>
+
     <?php
     
-    
-    
-    // print_r($data);
-    return 'it works';
 }
-
 
 
 
@@ -513,11 +490,6 @@ function mps_store_locator(){
 
 
 $mpsIcon = plugin_dir_path( __FILE__ ) . 'img/mpsicon.png';
-// function mps_maps_admin_menu(){
-//     $mpsMenu = add_menu_page('Mepps Maps','Mepps Maps','manage_options','plugin-page','mps_admin_page');   
-// }
-
-
 
 function mps_admin_page(){
 
@@ -679,19 +651,19 @@ function mps_admin_page(){
 
       <?php
 
-    //   echo $key;
+   
       
 
 
       
         // Load JSON file
-        $data = file_get_contents(plugin_dir_path( __FILE__ ) . '/data.json');
-        $data = stripslashes($data);
+        $geoData = file_get_contents(plugin_dir_path( __FILE__ ) . '/data.json');
+        $geoData = stripslashes($geoData);
 
 
         
         // Check for JSON err's 
-        $json = json_decode($data,true);
+        $geoJSON = json_decode($geoData,true);
         if (json_last_error()) {
             die('Invalid JSON provided!');
         }
@@ -750,17 +722,17 @@ function mps_admin_page(){
                     );
         
                
-                array_push($json['features'], $insert);
+                array_push($geoJSON['features'], $insert);
             
             
-                $updatedCont = json_encode($json, JSON_PRETTY_PRINT);
+                $updatedCont = json_encode($geoJSON, JSON_PRETTY_PRINT);
                
                 file_put_contents(plugin_dir_path( __FILE__ ) . '/data.json', $updatedCont);
 
                 $output = '<table>';
                 $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><tr><tbody>';
                 
-                foreach($json['features'] as $store){
+                foreach($geoJSON['features'] as $store){
             
                     $output .= '<tr>';
                     $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
@@ -798,7 +770,7 @@ function mps_admin_page(){
  
           
                 // Loop thru json
-                foreach($json['features'] as $key => $feature){
+                foreach($geoJSON['features'] as $key => $feature){
                  
                   
                     $jsonLng = $feature['geometry']['coordinates'][0]; 
@@ -810,23 +782,23 @@ function mps_admin_page(){
                     // If match, delete and update JSON file
                     if(trim($jsonLat) == trim($selLat) && trim($jsonLng) == trim($selLng)){
 
-                        // print_r($json['features'][$key]);
+                        
                         echo'<br><br><br>';
 
-                        unset($json['features'][$key]);
-                        $json['features'] = array_values($json['features']);
+                        unset($geoJSON['features'][$key]);
+                        $geoJSON['features'] = array_values($geoJSON['features']);
                         echo('success');
 
                         echo'<br>';
 
                         // print_r(array_values($json));
-                        $updatedCont = json_encode($json ,JSON_PRETTY_PRINT);
+                        $updatedCont = json_encode($geoJSON ,JSON_PRETTY_PRINT);
                         
                         file_put_contents(plugin_dir_path( __FILE__ ) . '/data.json', $updatedCont);
                         $output = '<table>';
                         $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><tr><tbody>';
                         
-                        foreach($json['features'] as $store){
+                        foreach($geoJSON['features'] as $store){
                     
                             $output .= '<tr>';
                             $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
@@ -863,7 +835,7 @@ function mps_admin_page(){
         $output = '<table>';
         $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><tr><tbody>';
         
-        foreach($json['features'] as $store){
+        foreach($geoJSON['features'] as $store){
     
             $output .= '<tr>';
             $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
@@ -886,6 +858,8 @@ function mps_admin_page(){
   
 }  }
 
+
+
 add_shortcode('mpsmaps','mps_store_locator');
 
 add_action('admin_menu', 'mps_maps_admin_menu');
@@ -894,20 +868,4 @@ function mps_maps_admin_menu(){
     $mpsMenu = add_menu_page('Mepps Maps','Mepps Maps','manage_options','mps-maps-admin','mps_admin_page');   
 }
 
-require_once(plugin_dir_path(__FILE__).'/includes/mps-maps-scripts.php');
-
-
-?>
-
-<div class="formArea">
-
-</div>
-
-<?
-
-
-
-    // }  }
-    
-
-
+// require_once(plugin_dir_path(__FILE__).'/includes/mps-maps-scripts.php');
