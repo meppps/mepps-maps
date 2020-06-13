@@ -6,7 +6,7 @@
 Plugin Name: Mepps Maps - Store Locator
 Plugin URI: http://github.com/meppps
 Description: Integrate Google Maps into your site with store locator functionality.
-Version: 1.0.1
+Version: 1.0.2
 Author: Mikey Epps
 Author URI: http://github.com/meppps
 License: GPLv2 or later
@@ -147,7 +147,7 @@ function mps_store_locator(){
     const points = [];
     const categories = [];
     var markers = [];
-
+    
     var json = JSON.parse(<?php print($geoJSON) ?>);
 
     points.push(json);        
@@ -221,6 +221,8 @@ function mps_store_locator(){
     // Init map
     function initMap() {
 
+        var infowindow;
+
         
     
         map = new google.maps.Map(document.getElementById('map'), {
@@ -288,12 +290,19 @@ function mps_store_locator(){
             <strong>Phone: </strong>${feature.properties.phone}<br/>
             <strong>Type: </strong>${feature.properties.category}<br/>
             `;
-            var infowindow = new google.maps.InfoWindow({
-             content: contentString
-            });
+            
 
             marker.setMap(map);
             marker.addListener('click',()=>{
+                if(infowindow){
+                    infowindow.close();
+                }
+
+                infowindow = new google.maps.InfoWindow({
+                    content: contentString
+                });
+
+                
                 infowindow.open(map, marker);
             });
 
@@ -320,12 +329,28 @@ function mps_store_locator(){
 
                 if (status === 'OK') {
 
-                    resultsMap.setCenter(results[0].geometry.location);          
-                             
+                    resultsMap.setCenter(results[0].geometry.location);
+                    var centerPopup = `<strong>Your Location</strong>`;
+
+                     
                     var marker = new google.maps.Marker({
                         map: resultsMap,
-                        position: results[0].geometry.location  
+                        position: results[0].geometry.location,
+                        animation: google.maps.Animation.DROP,
+                        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
                     });
+                    
+                    marker.addListener('click',()=>{
+                        if(infowindow){
+                            infowindow.close();
+                        }
+                        infowindow = new google.maps.InfoWindow({
+                                content: centerPopup
+                        });
+                        infowindow.open(map, marker);
+                    });
+
+                    
     
                     if(shape){
                         shape.setMap(null);
@@ -371,20 +396,26 @@ function mps_store_locator(){
                     
                     points[0].features.forEach((point)=>{
                         var storeCoords = point.geometry.coordinates;
-                        if(getDistance(center,storeCoords) < radius){
+                        var distance = getDistance(center,storeCoords);
+                        if(distance < radius){
+                            var miles = Math.round(distance / 1609.344);
+                            console.log(miles);
+
+                            var templateString = `<td class="store">${point.properties.name}<br><span style="font-size:15px;">${miles} miles from location</span></td><td class="cat">${point.properties.category}</td><td class="address">${point.properties.address}</td><td class="phone">${point.properties.phone}</td>`
+
                             if(filter){
                                 if(filterType() == point.properties.category){
                                     returnAdds.push(point.properties.address);
                                     var el = document.createElement('tr');
                                     el.classList.add('storeResult');
-                                    el.innerHTML = `<td class="store">${point.properties.name}</td><td class="cat">${point.properties.category}</td><td class="address">${point.properties.address}</td><td class="phone">${point.properties.phone}</td>`;
+                                    el.innerHTML = templateString;
                                     document.querySelector('.storeTbody').appendChild(el);
                                 }
                             }else{
                                 returnAdds.push(point.properties.address);
                                 var el = document.createElement('tr');
                                 el.classList.add('storeResult');
-                                el.innerHTML = `<td class="store">${point.properties.name}</td><td class="cat">${point.properties.category}</td><td class="address">${point.properties.address}</td><td class="phone">${point.properties.phone}</td>`;
+                                el.innerHTML = templateString;
                                 document.querySelector('.storeTbody').appendChild(el);
                             }
                         }
@@ -406,7 +437,12 @@ function mps_store_locator(){
                                 <strong>Phone: </strong>${match.phone}<br/>
                                 <strong>Type: </strong>${match.category}<br/>
                                 `;
-                                var infowindow = new google.maps.InfoWindow({
+
+                                if(infowindow){
+                                    infowindow.close();
+                                }
+
+                                infowindow = new google.maps.InfoWindow({
                                 content: contentString
                                 });
 
@@ -541,7 +577,8 @@ function mps_admin_page(){
         td{
             text-align: center;
             color: #000;
-            padding: 8px;
+            padding: 6px;
+            font-size: 16px;
         }
 
         button.remove{
@@ -552,8 +589,32 @@ function mps_admin_page(){
             border-radius: 6px;
             border: 0;
         }
+        button.editStore{
+            background: #ec830d;
+            color: #fff;
+            height: 30px;
+            width: 30px;
+            border-radius: 6px;
+            border: 0;
+        }
+        button.saveStore{
+            background: #2ce6a8;
+            color: #fff;
+            height: 30px;
+            width: 60px;
+            border-radius: 6px;
+            border: 0;
+        }
+        button.cancelEdit{
+            background: #ff0022;
+            color: #fff;
+            height: 30px;
+            width: 60px;
+            border-radius: 6px;
+            border: 0;
+        }
 
-        button.remove:hover{
+        button.remove:hover,button.editStore:hover{
             background: #000;
             color: #fff;
         }
@@ -580,6 +641,61 @@ function mps_admin_page(){
             border: 0;
             margin-top: 5px;
         }
+
+        div#hiddenFormArea{
+            height: 0px;   
+            width: 0px;
+            line-height: 0;
+            opacity: 0;
+        }
+
+        table>tbody>tr>td>input {
+            border-radius: 5px;
+            border: 0;
+            padding: 8px;
+            animation: fadein 2s;
+            -moz-animation: fadein 2s;
+            /* Firefox */
+            -webkit-animation: fadein 2s;
+            /* Safari and Chrome */
+            -o-animation: fadein 2s;
+            /* Opera */
+        }
+        /* @keyframes fadein {
+            from {
+                opacity:0;
+            }
+            to {
+                opacity:1;
+            }
+        }
+        @-moz-keyframes fadein {
+            /* Firefox */
+            from {
+                opacity:0;
+            }
+            to {
+                opacity:1;
+            }
+        }
+        @-webkit-keyframes fadein {
+            /* Safari and Chrome */
+            from {
+                opacity:0;
+            }
+            to {
+                opacity:1;
+            }
+        }
+        @-o-keyframes fadein {
+            /* Opera */
+            from {
+                opacity:0;
+            }
+            to {
+                opacity: 1;
+            }
+        } */
 
 
         </style>
@@ -639,11 +755,40 @@ function mps_admin_page(){
                     <button type="submit" class="button submit" id="keyBtn" value="submit">Add Key</button>
                     <button type="" class="button" id="showKey" value="">Show</button>
                 </form>
-            <h4><strong>Notice: </strong>Google maps requires an API key to operate. As a safety precaution you should restrict your API key.<br>
+            <h4><strong>Notice: </strong>Google maps requires an API key to operate. As a safety precaution you should restrict your API key to your website.<br>
             <span><a href="https://developers.google.com/maps/documentation/javascript/get-api-key" target="_blanks">Get Your API Key</a></span><br>
             <span><a href="https://cloud.google.com/blog/products/maps-platform/google-maps-platform-best-practices-restricting-api-keys" target="_blank">Learn to restrict your key<a></span></h4>
             
             </div>
+
+            <div id="hiddenFormArea">
+                <form action="" method="POST" id="editStoreForm">
+                <h3>hidden form</h3>
+                <label for="lat">Lat</label>
+                    <input class="widefat" name="editLat" id="editLat" type="text">
+
+                <label for="lng">Lng</label>
+                    <input class="widefat" name="editLng" id="editLng" type="text">
+
+                <label for="category">Category</label>
+                    <input class="widefat" name="editCat" id="editCat" type="text">
+
+                <label for="addStore">Store</label>
+                    <input class="widefat" name="editName" id="editName" type="text">
+
+                <label for="phone">Phone</label>
+                    <input class="widefat" name="editPhone" id="editPhone" type="text">
+
+                <label for="address">Address</label>
+                    <input class="widefat" name="editAddress" id="editAddress" type="text">
+
+                <label for="storeid">Store ID</label>
+                    <input class="widefat" name="editStoreId" id="editStoreId" type="text">
+
+                <button type="submit" class="button submit" style="margin-top:5px" id="editStoreSubmitBtn">Edit Store</button>
+            </div>
+            
+            </form>
         </section>
         
 
@@ -658,24 +803,50 @@ function mps_admin_page(){
       
         // Load JSON file
         $geoData = file_get_contents(plugin_dir_path( __FILE__ ) . '/data.json');
-        $geoData = stripslashes($geoData);
+        // $geoData = stripslashes($geoData);
 
 
         
         // Check for JSON err's 
         $geoJSON = json_decode($geoData,true);
-        if (json_last_error()) {
-            die('Invalid JSON provided!');
-        }
+
         if(json_last_error()){
-            echo'<h1>JSON ERR</h1>';
+            echo'<h1>JSON Error</h1>';
             print_r(json_last_error());
         }
+
+        function createAdminTable($jsonData){
+            $output = '<table>';
+            $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><th>Edit</th><tr><tbody>';
+            
+            foreach($jsonData['features'] as $store){
+                
+                $output .= '<tr>';
+                $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
+                $output .= '<td class="lat">'.$store['geometry']['coordinates'][1].'</td>';
+                $output .= '<td class="cat">'.$store['properties']['category'].'</td>';
+                $output .= '<td class="name">'.$store['properties']['name'].'</td>';
+                $output .= '<td class="phone">'.$store['properties']['phone'].'</td>';
+                $output .= '<td class="address">'.$store['properties']['address'].'</td>';
+                $output .= '<td class="storeid">'.$store['properties']['storeid'].'</td>';
+                $output .= '<td class="remove"><button class="remove">X</button></td>';
+                $output .= '<td class="editStore"><button class="editStore">E</button></td>';
+                $output .= '</tr>';
+        
+            }
+            $output .= '</tbody></table>';
+            echo $output;
+
+            return;
+        }
+
         
 
 
 
         if(isset($_POST)){
+
+            // print_r($_POST);
 
 
             // ================================ // 
@@ -693,14 +864,7 @@ function mps_admin_page(){
                 $storeID = $_POST['storeid'];
                 $phone = $_POST['phone'];
 
-                print_r($store);
-                print_r($cat);
-                print_r($lat);
-                print_r($lng);
-                print_r($add);
-                print_r($storeID);
 
-                echo'<br>';
 
                 // Create geojson obj
                 $insert = array(
@@ -714,9 +878,9 @@ function mps_admin_page(){
                     'type' => 'Feature',
                     'properties' => array(
                         'category' => $cat,
-                        'name' => $store,
+                        'name' => stripslashes($store),
                         'phone' => $phone,
-                        'address' => $add,
+                        'address' => stripslashes($add),
                         'storeid' => $storeID
                     )   
                     );
@@ -729,30 +893,9 @@ function mps_admin_page(){
                
                 file_put_contents(plugin_dir_path( __FILE__ ) . '/data.json', $updatedCont);
 
-                $output = '<table>';
-                $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><tr><tbody>';
-                
-                foreach($geoJSON['features'] as $store){
-            
-                    $output .= '<tr>';
-                    $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
-                    $output .= '<td class="lat">'.$store['geometry']['coordinates'][1].'</td>';
-                    $output .= '<td class="cat">'.$store['properties']['category'].'</td>';
-                    $output .= '<td class="name">'.$store['properties']['name'].'</td>';
-                    $output .= '<td class="phone">'.$store['properties']['phone'].'</td>';
-                    $output .= '<td class="address">'.$store['properties']['address'].'</td>';
-                    $output .= '<td class="storeid">'.$store['properties']['storeid'].'</td>';
-                    $output .= '<td class="remove"><button class="remove">X</button></td>';
-                    $output .= '</tr>';
-            
-                }
-                $output .= '</tbody></table>';
-                echo $output;
-
+                createAdminTable($geoJSON);
                 return;
                 
-
-            
             }
 
 
@@ -783,37 +926,20 @@ function mps_admin_page(){
                     if(trim($jsonLat) == trim($selLat) && trim($jsonLng) == trim($selLng)){
 
                         
-                        echo'<br><br><br>';
+                        
 
                         unset($geoJSON['features'][$key]);
                         $geoJSON['features'] = array_values($geoJSON['features']);
-                        echo('success');
 
                         echo'<br>';
+                        echo('success');
 
-                        // print_r(array_values($json));
-                        $updatedCont = json_encode($geoJSON ,JSON_PRETTY_PRINT);
+                        
+                        $updatedCont = json_encode($geoJSON, JSON_PRETTY_PRINT);
                         
                         file_put_contents(plugin_dir_path( __FILE__ ) . '/data.json', $updatedCont);
-                        $output = '<table>';
-                        $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><tr><tbody>';
-                        
-                        foreach($geoJSON['features'] as $store){
                     
-                            $output .= '<tr>';
-                            $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
-                            $output .= '<td class="lat">'.$store['geometry']['coordinates'][1].'</td>';
-                            $output .= '<td class="cat">'.$store['properties']['category'].'</td>';
-                            $output .= '<td class="name">'.$store['properties']['name'].'</td>';
-                            $output .= '<td class="phone">'.$store['properties']['phone'].'</td>';
-                            $output .= '<td class="address">'.$store['properties']['address'].'</td>';
-                            $output .= '<td class="storeid">'.$store['properties']['storeid'].'</td>';
-                            $output .= '<td class="remove"><button class="remove">X</button></td>';
-                            $output .= '</tr>';
-                    
-                        }
-                        $output .= '</tbody></table>';
-                        echo $output;
+                        createAdminTable($geoJSON);
                         return;
 
                     }
@@ -821,7 +947,7 @@ function mps_admin_page(){
                 }
                
             }             
-            echo'<br><br>';
+
             
             // Change API key
             if(isset($_POST['key'])){
@@ -829,28 +955,66 @@ function mps_admin_page(){
 
                 file_put_contents(plugin_dir_path( __FILE__ ) . '/data/key.txt',$newKey);
             }
+
+            // Edit store data
+            if(isset($_POST['editName'])){
+
+                $editLat = floatval($_POST['editLat']);
+                $editLng = floatval($_POST['editLng']);
+                $editCat = $_POST['editCat'];
+                $editName = stripslashes($_POST['editName']);
+                $editPhone = $_POST['editPhone'];
+                $editAddress = stripslashes($_POST['editAddress']);
+                $editStoreId = $_POST['editStoreId'];
+            
+
+                // Loop thru json
+                foreach($geoJSON['features'] as $key => $feature){
+                 
+                  
+                    // If match, update JSON file
+                    if(trim($editStoreId) == trim($geoJSON['features'][$key]['properties']['storeid'])){
+                        
+
+                        // Check for differences, update
+                        $geoJSON['features'][$key]['geometry']['coordinates'][0] !== $editLng ?
+                        $geoJSON['features'][$key]['geometry']['coordinates'][0] = $editLng:
+                        $geoJSON['features'][$key]['geometry']['coordinates'][1] !== $editLat ?
+                        $geoJSON['features'][$key]['geometry']['coordinates'][1] = $editLat:
+                        $geoJSON['features'][$key]['geometry']['coordinates'][1] !== $editLat ?
+                        $geoJSON['features'][$key]['geometry']['coordinates'][1] = $editLat:
+                        $geoJSON['features'][$key]['properties']['category'] !== $editCat ?
+                        $geoJSON['features'][$key]['properties']['category'] = $editCat:
+                        $geoJSON['features'][$key]['properties']['name'] !== $editName ?
+                        $geoJSON['features'][$key]['properties']['name'] = $editName:
+                        $geoJSON['features'][$key]['properties']['phone'] !== $editPhone ?
+                        $geoJSON['features'][$key]['properties']['phone'] = $editPhone:
+                        $geoJSON['features'][$key]['properties']['address'] !== $editAddress ?
+                        $geoJSON['features'][$key]['properties']['address'] = $editAddress:
+                        
+
+                        // Set to file
+                        $geoJSON['features'] = array_values($geoJSON['features']);
+                        $updatedCont = json_encode($geoJSON, JSON_PRETTY_PRINT);
+                        file_put_contents(plugin_dir_path( __FILE__ ) . '/data.json', $updatedCont);
+                        createAdminTable($geoJSON);
+                        return;
+                     
+                        
+                    }                       
         
+                }
+                
+            }
+
         }
 
-        $output = '<table>';
-        $output .= '<tr><th>Lng</th><th>Lat</th><th>Category</th><th>Name</th><th>Phone</th><th>Address</th><th>StoreID</th><th>Remove</th><tr><tbody>';
         
-        foreach($geoJSON['features'] as $store){
-    
-            $output .= '<tr>';
-            $output .= '<td class="lng">'.$store['geometry']['coordinates'][0].'</td>';
-            $output .= '<td class="lat">'.$store['geometry']['coordinates'][1].'</td>';
-            $output .= '<td class="cat">'.$store['properties']['category'].'</td>';
-            $output .= '<td class="name">'.$store['properties']['name'].'</td>';
-            $output .= '<td class="phone">'.$store['properties']['phone'].'</td>';
-            $output .= '<td class="address">'.$store['properties']['address'].'</td>';
-            $output .= '<td class="storeid">'.$store['properties']['storeid'].'</td>';
-            $output .= '<td class="remove"><button class="remove">X</button></td>';
-            $output .= '</tr>';
-    
-        }
-        $output .= '</tbody></table>';
-        echo $output;
+
+        
+        // print_r($_POST);
+
+        createAdminTable($geoJSON);
 
 
         

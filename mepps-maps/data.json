@@ -17,6 +17,23 @@
                 "address": "1234 Test Dr.",
                 "storeid": "01"
             }
+        },
+        {
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -118.2746571,
+                    34.0433543
+                ]
+            },
+            "type": "Feature",
+            "properties": {
+                "category": "Sample",
+                "name": "Store 2",
+                "phone": "565656",
+                "address": "4321 Test Dr.",
+                "storeid": "02"
+            }
         }
     ]
 }
