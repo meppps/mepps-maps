@@ -23,7 +23,7 @@ Location data can now be easily updated using the editor on the admin page.
 
 ![](png/admin.png)
 
-![](png/admin.gif)
+
 
 ## New in v 1.0.2
 - Added update functionality to make changing store info easier
@@ -33,7 +33,7 @@ Location data can now be easily updated using the editor on the admin page.
 - Marker popups now close when a new one is opened
 - Refactored code for performance
 
-
+![](png/admin.gif)
 
 ## Other Notes
 Avoid leaving any fields blank. Use 'n/a' instead.
