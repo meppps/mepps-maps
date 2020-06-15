@@ -1029,7 +1029,7 @@ add_shortcode('mpsmaps','mps_store_locator');
 add_action('admin_menu', 'mps_maps_admin_menu');
 
 function mps_maps_admin_menu(){
-    $mpsMenu = add_menu_page('Mepps Maps','Mepps Maps','manage_options','mps-maps-admin','mps_admin_page');   
+    $mpsMenu = add_menu_page('Mepps Maps','Mepps Maps','manage_options','mps_maps_admin','mps_admin_page',plugins_url( 'img/', __FILE__ ) . 'mepps20x20.png');   
 }
 
 // require_once(plugin_dir_path(__FILE__).'/includes/mps-maps-scripts.php');
