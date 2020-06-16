@@ -4,9 +4,9 @@
 */
 /*
 Plugin Name: Mepps Maps - Store Locator
-Plugin URI: http://github.com/meppps
+Plugin URI: https://github.com/meppps/mepps-maps
 Description: Integrate Google Maps into your site with store locator functionality.
-Version: 1.0.2
+Version: 1.0.3
 Author: Mikey Epps
 Author URI: http://github.com/meppps
 License: GPLv2 or later
@@ -215,6 +215,15 @@ function mps_store_locator(){
     }
     initFilter();
 
+
+    function appendToTable(point){
+        var templateString = `<td class="store">${point.properties.name}<br><span style="font-size:15px;">${point.properties.milesDistance} miles from location</span></td><td class="cat">${point.properties.category}</td><td class="address">${point.properties.address}</td><td class="phone">${point.properties.phone}</td>`;
+        var el = document.createElement('tr');
+        el.classList.add('storeResult');
+        el.innerHTML = templateString;
+        document.querySelector('.storeTbody').appendChild(el);
+    }
+
     var map;
 
 
@@ -391,34 +400,38 @@ function mps_store_locator(){
 
 
                     // Loop through points, return all within radius
-                    // TODO: Create reusable table function
+                    // TODO: Create better table functions
                     createTable();
                     
                     points[0].features.forEach((point)=>{
+
                         var storeCoords = point.geometry.coordinates;
                         var distance = getDistance(center,storeCoords);
                         if(distance < radius){
                             var miles = Math.round(distance / 1609.344);
-                            console.log(miles);
-
-                            var templateString = `<td class="store">${point.properties.name}<br><span style="font-size:15px;">${miles} miles from location</span></td><td class="cat">${point.properties.category}</td><td class="address">${point.properties.address}</td><td class="phone">${point.properties.phone}</td>`
+                            point.properties.metersDistance = distance;
+                            point.properties.milesDistance = miles;
+                            
 
                             if(filter){
                                 if(filterType() == point.properties.category){
                                     returnAdds.push(point.properties.address);
-                                    var el = document.createElement('tr');
-                                    el.classList.add('storeResult');
-                                    el.innerHTML = templateString;
-                                    document.querySelector('.storeTbody').appendChild(el);
+                                    returnPoints.push(point);                                    
                                 }
                             }else{
                                 returnAdds.push(point.properties.address);
-                                var el = document.createElement('tr');
-                                el.classList.add('storeResult');
-                                el.innerHTML = templateString;
-                                document.querySelector('.storeTbody').appendChild(el);
+                                returnPoints.push(point);
                             }
                         }
+                    });
+
+                    // Sort results by distance
+                    returnPoints = returnPoints.sort((a, b) => parseFloat(a.properties.metersDistance) - parseFloat(b.properties.metersDistance));
+                    
+                    
+                    // Output to table
+                    returnPoints.forEach((point)=>{
+                        appendToTable(point);
                     });
 
                     // TODO: Show when clicked in table DONE 
@@ -447,6 +460,9 @@ function mps_store_locator(){
                                 });
 
                               infowindow.open(map, match);
+
+                                document.getElementById('map').scrollIntoView({ block: 'end',  behavior: 'smooth' });
+
 
                           })
                       })
@@ -704,7 +720,7 @@ function mps_admin_page(){
 
             <div style="width:500px">
             <h3>Add a store</h3>
-            <form action="" method="POST">
+            <form action="" method="POST" id="addStoreForm">
 
             <label for="lat">Lat</label>
                 <input class="widefat" name="lat" id="lat" type="text">

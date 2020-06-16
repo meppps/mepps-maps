@@ -225,5 +225,57 @@
         }
     });
 
+    // Auto generate store id when adding store
+    if(document.querySelector('td.storeid')){
+
+        function generateId(){
+
+            var storeids = [];
+            document.querySelectorAll('td.storeid').forEach((id)=>{
+                storeids.push(id.innerText);
+            });
+
+            storeInts = storeids.map(x => parseInt(x));
+            storeIntMax = Math.max(...storeInts);
+            console.log(storeIntMax);
+
+            // No nums
+            if(isNaN(storeIntMax)){
+                return '';
+            }
+
+            // Generate suggested id
+            if(storeids[0].startsWith('0')){
+                // 0123
+                return `0${storeIntMax + 1}`;
+
+            }else{
+                // 123
+                return `${storeIntMax + 1}`;
+            }
+
+        }
+
+        // Add id unless user specifies otherwise
+        var changedId = false;
+
+        document.querySelector('input#storeid').addEventListener('input',()=>{
+            changedId = true;
+        });
+
+        document.getElementById('addStoreForm').addEventListener('input',()=>{
+            var suggestedID = generateId();
+
+            if(document.querySelector('input#storeid').value == '' && changedId == false){
+                document.querySelector('input#storeid').value = suggestedID;
+            }else{
+                return; 
+            }
+        
+        });
+    }else{
+        console.log('No Stores Yet');
+    }
+
 
 });
